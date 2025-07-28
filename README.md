@@ -1,1 +1,1 @@
-Building an LLM from Scratch
+Building GPT from Scratch
