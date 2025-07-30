@@ -21,18 +21,20 @@ class GPT2(nn.Module):
 
         self.tok_emb = nn.Embedding(config['vocab_size'], config['emb_dim'])
         self.pos_emb = nn.Embedding(config['context_length'], config['emb_dim'])
+        self.drop_emb = nn.Dropout(config['drop_rate'])
         self.trf_layers = nn.Sequential(*[TransformerBlock(config) for _ in range(config['num_layers'])])
-        self.final_norm = nn.LayerNorm(config['emb_dim'])
+        self.final_norm = LayerNorm(config['emb_dim'])
         self.output_head = nn.Linear(config['emb_dim'], config['vocab_size'])
-        self.output_head.weight = self.tok_emb.weight
+        # self.output_head.weight = self.tok_emb.weight
 
     def forward(self, x):
         batch_size, seq_len = x.shape
 
         tok_embd = self.tok_emb(x)
-        pos_embd = self.pos_emb(torch.arange(seq_len), device=x.device)
+        pos_embd = self.pos_emb(torch.arange(seq_len, device=x.device))
 
         x = tok_embd + pos_embd
+        x = self.drop_emb(x)
         x = self.trf_layers(x)
         x = self.final_norm(x)
         logits = self.output_head(x)
@@ -74,7 +76,7 @@ class TransformerBlock(nn.Module):
     
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_in, d_out, n_heads, context_length=1024, dropout=0.1, qkv_bias=False):
-        super().__init()
+        super().__init__()
         assert d_out % n_heads == 0, "d_out has to be a multiple of n_heads"
         self.dk = d_out
         self.n_heads = n_heads
